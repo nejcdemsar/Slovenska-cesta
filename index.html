@@ -2,24 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Interactive Street Viewer</title>
+<title>Interactive Street Facade Viewer</title>
 <style>
-    body { margin:0; overflow:hidden; }
-    #container { width:100%; height:100%; }
-    #loading {
-        position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);
-        color:white; background:rgba(0,0,0,0.8); padding:20px; border-radius:10px;
-        text-align:center; z-index:10;
-    }
-    #progress-bar { width:200px; height:15px; background:#333; border-radius:8px; margin-top:10px; overflow:hidden;}
-    #progress { width:0%; height:100%; background:#4facfe; border-radius:8px;}
+body { margin: 0; overflow: hidden; }
+#container { width: 100%; height: 100%; }
+#loading {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: white; background: rgba(0,0,0,0.8);
+  padding: 20px; border-radius: 12px;
+  text-align: center; z-index: 10;
+}
+#progress-bar { width: 200px; height: 15px; background: #333; border-radius: 8px; margin-top: 10px; overflow: hidden;}
+#progress { width: 0%; height: 100%; background: #4facfe; border-radius: 8px;}
 </style>
 </head>
 <body>
 <div id="container"></div>
 <div id="loading">
-    Loading street...
-    <div id="progress-bar"><div id="progress"></div></div>
+  Loading street...
+  <div id="progress-bar"><div id="progress"></div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
@@ -29,85 +32,103 @@
 <script>
 let camera, scene, renderer, controls;
 let loadedParts = 0, totalParts = 9;
+const move = {forward:false, backward:false, left:false, right:false, up:false, down:false};
 
 init();
 animate();
 
 function init() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x88ccff);
-    scene.fog = new THREE.Fog(0x88ccff, 10, 100);
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x88ccff);
+  scene.fog = new THREE.Fog(0x88ccff, 10, 100);
 
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 1.6, 5);
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 1.6, 5);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 1.0);
-    scene.add(ambient);
+  const ambient = new THREE.AmbientLight(0xffffff, 1.0);
+  scene.add(ambient);
 
-    renderer = new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.getElementById('container').appendChild(renderer.domElement);
+  const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+  directional.position.set(1,1,0.5).normalize();
+  scene.add(directional);
 
-    controls = new THREE.PointerLockControls(camera, document.body);
-    document.body.addEventListener('click', () => controls.lock());
-    scene.add(controls.getObject());
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('container').appendChild(renderer.domElement);
 
-    // Ground plane
-    const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(200,200),
-        new THREE.MeshStandardMaterial({color:0x3a6b35})
+  // PointerLock controls
+  controls = new THREE.PointerLockControls(camera, document.body);
+  document.body.addEventListener('click', () => controls.lock());
+  scene.add(controls.getObject());
+
+  // Ground plane
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(200,200),
+    new THREE.MeshStandardMaterial({color:0x3a6b35})
+  );
+  ground.rotation.x = -Math.PI/2;
+  ground.position.y = -0.5;
+  scene.add(ground);
+
+  // Load street parts
+  const loader = new THREE.GLTFLoader();
+  for(let i=1;i<=totalParts;i++){
+    loader.load(`street_part${i}.glb`,
+      gltf => {
+        scene.add(gltf.scene);
+        loadedParts++;
+        document.getElementById('progress').style.width = (loadedParts/totalParts*100)+'%';
+        if(loadedParts===totalParts) document.getElementById('loading').style.display='none';
+      },
+      undefined,
+      err => { console.error(err); loadedParts++; }
     );
-    ground.rotation.x = -Math.PI/2;
-    ground.position.y = -0.5;
-    scene.add(ground);
+  }
 
-    // Load street parts
-    const loader = new THREE.GLTFLoader();
-    for(let i=1;i<=totalParts;i++){
-        loader.load(`street_part${i}.glb`, gltf => {
-            scene.add(gltf.scene);
-            loadedParts++;
-            document.getElementById('progress').style.width = (loadedParts/totalParts*100) + '%';
-            if(loadedParts===totalParts) document.getElementById('loading').style.display='none';
-        }, undefined, err=>{console.error(err); loadedParts++;});
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // Movement keys
+  document.addEventListener('keydown', e => {
+    switch(e.code){
+      case 'KeyW': move.forward=true; break;
+      case 'KeyS': move.backward=true; break;
+      case 'KeyA': move.left=true; break;
+      case 'KeyD': move.right=true; break;
+      case 'Space': move.up=true; break;
+      case 'ShiftLeft': move.down=true; break;
+      case 'KeyR': controls.getObject().position.set(0,1.6,5); break;
     }
-
-    window.addEventListener('resize', ()=>{
-        camera.aspect = window.innerWidth/window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+  });
+  document.addEventListener('keyup', e => {
+    switch(e.code){
+      case 'KeyW': move.forward=false; break;
+      case 'KeyS': move.backward=false; break;
+      case 'KeyA': move.left=false; break;
+      case 'KeyD': move.right=false; break;
+      case 'Space': move.up=false; break;
+      case 'ShiftLeft': move.down=false; break;
+    }
+  });
 }
 
-// Movement
-const move = {forward:false, backward:false, left:false, right:false};
-document.addEventListener('keydown', e=>{
-    switch(e.code){
-        case 'KeyW': move.forward=true; break;
-        case 'KeyS': move.backward=true; break;
-        case 'KeyA': move.left=true; break;
-        case 'KeyD': move.right=true; break;
-    }
-});
-document.addEventListener('keyup', e=>{
-    switch(e.code){
-        case 'KeyW': move.forward=false; break;
-        case 'KeyS': move.backward=false; break;
-        case 'KeyA': move.left=false; break;
-        case 'KeyD': move.right=false; break;
-    }
-});
+function animate() {
+  requestAnimationFrame(animate);
 
-function animate(){
-    requestAnimationFrame(animate);
-    if(controls.isLocked){
-        const speed = 0.1;
-        if(move.forward) controls.moveForward(speed);
-        if(move.backward) controls.moveForward(-speed);
-        if(move.left) controls.moveRight(-speed);
-        if(move.right) controls.moveRight(speed);
-    }
-    renderer.render(scene,camera);
+  if(controls.isLocked){
+    const speed = 0.1;
+    if(move.forward) controls.moveForward(speed);
+    if(move.backward) controls.moveForward(-speed);
+    if(move.left) controls.moveRight(-speed);
+    if(move.right) controls.moveRight(speed);
+    if(move.up) controls.getObject().position.y += speed;
+    if(move.down) controls.getObject().position.y -= speed;
+  }
+
+  renderer.render(scene, camera);
 }
 </script>
 </body>

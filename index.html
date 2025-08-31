@@ -6,8 +6,6 @@
   <style>
     body { margin: 0; overflow: hidden; }
     canvas { display: block; }
-
-    /* Loading screen */
     #loading {
       position: fixed;
       top: 0; left: 0;
@@ -26,13 +24,12 @@
 <body>
 <div id="loading">Loading street...</div>
 
-<script type="module">
-  // IMPORTS USING CDN URLs — this works in the browser
-  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
-  import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/loaders/GLTFLoader.js';
-  import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/controls/PointerLockControls.js';
+<!-- Use non-module three.js + loader -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/PointerLockControls.js"></script>
 
-  // Scene setup
+<script>
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
   camera.position.set(0, 1.6, 5);
@@ -45,8 +42,7 @@
   light.position.set(0, 20, 0);
   scene.add(light);
 
-  // Load multiple GLB parts
-  const loader = new GLTFLoader();
+  const loader = new THREE.GLTFLoader();
   const parts = [
     "street_part1.glb","street_part2.glb","street_part3.glb",
     "street_part4.glb","street_part5.glb","street_part6.glb",
@@ -57,26 +53,20 @@
   const loadingDiv = document.getElementById('loading');
 
   parts.forEach(file => {
-    loader.load(file, (gltf) => {
+    loader.load(file, function(gltf){
       scene.add(gltf.scene);
       loadedCount++;
       loadingDiv.textContent = `Loading street... (${loadedCount}/${parts.length})`;
-
-      if (loadedCount === parts.length) {
-        loadingDiv.style.display = 'none';
-      }
-    }, undefined, (error) => {
+      if(loadedCount === parts.length) loadingDiv.style.display = 'none';
+    }, undefined, function(error){
       console.error("Error loading " + file, error);
       loadedCount++;
       loadingDiv.textContent = `Loading street... (${loadedCount}/${parts.length})`;
-      if (loadedCount === parts.length) {
-        loadingDiv.style.display = 'none';
-      }
+      if(loadedCount === parts.length) loadingDiv.style.display = 'none';
     });
   });
 
-  // Controls (WASD + mouse)
-  const controls = new PointerLockControls(camera, document.body);
+  const controls = new THREE.PointerLockControls(camera, document.body);
   document.body.addEventListener('click', () => controls.lock());
 
   const velocity = new THREE.Vector3();
@@ -88,30 +78,25 @@
 
   function animate() {
     requestAnimationFrame(animate);
-
-    if (controls.isLocked) {
+    if(controls.isLocked){
       const speed = 0.05;
       direction.z = Number(keys['KeyW']) - Number(keys['KeyS']);
       direction.x = Number(keys['KeyD']) - Number(keys['KeyA']);
       direction.normalize();
-
       velocity.x = direction.x * speed;
       velocity.z = direction.z * speed;
-
       controls.moveRight(velocity.x);
       controls.moveForward(velocity.z);
     }
-
     renderer.render(scene, camera);
   }
   animate();
 
-  window.addEventListener('resize', () => {
+  window.addEventListener('resize', ()=>{
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
-
 </script>
 </body>
 </html>

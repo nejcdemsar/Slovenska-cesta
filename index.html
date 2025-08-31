@@ -8,6 +8,7 @@
       margin: 0; 
       overflow: hidden; 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #111;
     }
     canvas { 
       display: block; 
@@ -50,9 +51,10 @@
       text-align: center;
       color: white;
       background: rgba(0, 0, 0, 0.7);
-      padding: 10px;
+      padding: 15px;
       z-index: 100;
       font-size: 16px;
+      transition: opacity 0.5s;
     }
     #error {
       display: none;
@@ -60,6 +62,17 @@
       margin-top: 20px;
       text-align: center;
       max-width: 80%;
+    }
+    #credits {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      color: white;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px 15px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 5;
     }
   </style>
 </head>
@@ -76,12 +89,17 @@
   Click to activate controls | W, A, S, D to move | Mouse to look around
 </div>
 
-<!-- Using correct CDN paths for Three.js and its addons -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/PointerLockControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/loaders/GLTFLoader.js"></script>
+<div id="credits">
+  Three.js Street Walkthrough
+</div>
 
-<script>
+<!-- Using ES modules as recommended by Three.js -->
+<script type="module">
+  // Import Three.js using ES modules
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js';
+  import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/controls/PointerLockControls.js';
+  import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/GLTFLoader.js';
+
   // Main variables
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x88ccff);
@@ -116,20 +134,39 @@
 
   // Create a simple ground plane as fallback
   const groundGeometry = new THREE.PlaneGeometry(100, 100);
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228822 });
+  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228822, roughness: 0.8 });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.1;
   ground.receiveShadow = true;
   scene.add(ground);
 
+  // Create a road
+  const roadGeometry = new THREE.PlaneGeometry(10, 100);
+  const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
+  const road = new THREE.Mesh(roadGeometry, roadMaterial);
+  road.rotation.x = -Math.PI / 2;
+  road.position.y = 0.01;
+  road.receiveShadow = true;
+  scene.add(road);
+
+  // Add road markings
+  for (let i = -10; i < 10; i += 2) {
+    const markingGeometry = new THREE.PlaneGeometry(0.5, 2);
+    const markingMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const marking = new THREE.Mesh(markingGeometry, markingMaterial);
+    marking.rotation.x = -Math.PI / 2;
+    marking.position.set(0, 0.02, i * 5);
+    scene.add(marking);
+  }
+
   // Create some placeholder buildings since the GLB files aren't available
   function createPlaceholderBuildings() {
     const buildingColors = [0xcc5555, 0x55cc55, 0x5555cc, 0xcccc55, 0xcc55cc];
     
     for (let i = -4; i <= 4; i += 2) {
-      for (let j = -4; j <= 4; j += 2) {
-        if (i === 0 && j === 0) continue; // Skip center where player is
+      for (let j = -20; j <= 20; j += 5) {
+        if (Math.abs(i) < 2 && Math.abs(j) < 5) continue; // Skip center where player is
         
         const height = 5 + Math.random() * 10;
         const width = 1.5 + Math.random() * 1.5;
@@ -142,7 +179,7 @@
         });
         
         const building = new THREE.Mesh(geometry, material);
-        building.position.set(i * 5, height/2, j * 5);
+        building.position.set(i * 5, height/2, j);
         building.castShadow = true;
         building.receiveShadow = true;
         scene.add(building);
@@ -150,8 +187,33 @@
     }
   }
 
+  // Add some trees
+  function createTrees() {
+    for (let i = -30; i <= 30; i += 5) {
+      if (i === 0) continue;
+      
+      // Tree trunk
+      const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 2);
+      const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.set(7, 1, i);
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      scene.add(trunk);
+      
+      // Tree foliage
+      const foliageGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+      const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228822 });
+      const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+      foliage.position.set(7, 2.5, i);
+      foliage.castShadow = true;
+      foliage.receiveShadow = true;
+      scene.add(foliage);
+    }
+  }
+
   // Loader setup
-  const loader = new THREE.GLTFLoader();
+  const loader = new GLTFLoader();
   const parts = [
     "street_part1.glb","street_part2.glb","street_part3.glb",
     "street_part4.glb","street_part5.glb","street_part6.glb",
@@ -173,6 +235,8 @@
       }, 
       function(xhr) {
         // Progress updates can be handled here if needed
+        const percent = (xhr.loaded / xhr.total) * 100;
+        console.log(`${file} ${percent.toFixed(2)}% loaded`);
       },
       function(error){
         console.error("Error loading " + file, error);
@@ -189,12 +253,13 @@
   function updateProgress() {
     const progress = (loadedCount / parts.length) * 100;
     progressBar.style.width = progress + '%';
-    loadingDiv.textContent = `Loading street... (${loadedCount}/${parts.length})`;
+    loadingDiv.querySelector('div').textContent = `Loading street... (${loadedCount}/${parts.length})`;
     
     if (loadedCount === parts.length) {
       // If nothing was loaded, create placeholder buildings
       if (scene.children.filter(child => child.type === 'Group').length < 2) {
         createPlaceholderBuildings();
+        createTrees();
       }
       
       // Fade out loading screen
@@ -208,7 +273,7 @@
   }
 
   // Controls setup
-  const controls = new THREE.PointerLockControls(camera, document.body);
+  const controls = new PointerLockControls(camera, document.body);
   
   // Instructions and click handling
   const instructions = document.getElementById('instructions');
@@ -217,7 +282,6 @@
   document.body.addEventListener('click', () => {
     if (!controls.isLocked) {
       controls.lock();
-      instructions.style.display = 'none';
     }
   });
   
@@ -265,6 +329,9 @@
 
   // Start the animation
   animate();
+  createPlaceholderBuildings();
+  createTrees();
+  updateProgress();
 </script>
 </body>
 </html>

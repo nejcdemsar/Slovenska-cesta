@@ -27,28 +27,25 @@
 <div id="loading">Loading street...</div>
 
 <script type="module">
+  // IMPORTS USING CDN URLs — this works in the browser
   import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
   import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/loaders/GLTFLoader.js';
   import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/controls/PointerLockControls.js';
 
-  let scene, camera, renderer, controls;
+  // Scene setup
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 1.6, 5);
 
-  // Scene + Camera
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 1.6, 5); // human height
-
-  // Renderer
-  renderer = new THREE.WebGLRenderer({antialias: true});
+  const renderer = new THREE.WebGLRenderer({antialias: true});
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // Light
   const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
   light.position.set(0, 20, 0);
   scene.add(light);
 
-  // Load multiple street segments
+  // Load multiple GLB parts
   const loader = new GLTFLoader();
   const parts = [
     "street_part1.glb","street_part2.glb","street_part3.glb",
@@ -79,10 +76,9 @@
   });
 
   // Controls (WASD + mouse)
-  controls = new PointerLockControls(camera, document.body);
+  const controls = new PointerLockControls(camera, document.body);
   document.body.addEventListener('click', () => controls.lock());
 
-  // Movement
   const velocity = new THREE.Vector3();
   const direction = new THREE.Vector3();
   const keys = {};
@@ -110,12 +106,12 @@
   }
   animate();
 
-  // Handle window resize
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
+
 </script>
 </body>
 </html>
